@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="acc_desc">Enforces pure-black sleep lock and turns off screen during your scheduled sleep hours until Fajr.</string>
+</resources>

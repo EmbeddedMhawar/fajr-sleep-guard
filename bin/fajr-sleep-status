@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Display current Fajr Sleep Guard schedule, history summary, and emergency state."""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+import sys
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+ROOT = Path(__file__).resolve().parent.parent / "reference-omarchy-android"
+sys.path.insert(0, str(ROOT))
+
+from fajr_sleep_guard.config import GUARD_STATE_PATH, HISTORY_PATH, SCHEDULE_PATH, load_json  # noqa: E402
+
+
+def main() -> int:
+    sched = load_json(SCHEDULE_PATH)
+    hist = load_json(HISTORY_PATH, default=[])
+    guard = load_json(GUARD_STATE_PATH, default={})
+
+    if not sched:
+        print("No schedule.json found. Run `fajr-sleep-sync` first.")
+        return 1
+
+    tz = ZoneInfo(sched.get("timezone", "Africa/Casablanca"))
+    now = dt.datetime.now(tz)
+    t = sched["tonight"]
+    a = sched["active_window"]
+
+    print(f"Now:            {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    print(f"Location:       {sched.get('city')}, {sched.get('country')}")
+    print(f"History days:   {len(hist)} (anchor bedtime offset: {sched.get('recent_anchor_bedtime_rel_min')} min from midnight)")
+    print(f"Active window:  {a['night_of']} -> lock {a['bedtime'][11:16]} (sleep {a.get('desired_sleep_at', a['bedtime'])[11:16]}) .. wake {a['wake_at'][11:16]} (Fajr {a['fajr'][11:16]})")
+    print(f"Tonight window: {t['night_of']} -> Isha {t['isha'][11:16]} | Lock {t['bedtime'][11:16]} (sleep {t.get('desired_sleep_at', t['bedtime'])[11:16]}, ideal lock {t['ideal_bedtime'][11:16]}) | Wake {t['wake_at'][11:16]}")
+    print(f"Expected sleep: {t['expected_sleep_min']//60}h {t['expected_sleep_min']%60:02d}m | Days to ideal: {sched.get('days_to_converge_est')}")
+    print(f"Guard state:    {json.dumps(guard)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

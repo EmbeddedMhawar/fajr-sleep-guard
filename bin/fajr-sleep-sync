@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Sync Zepp Life sleep data, recompute Fajr sleep schedule, and push to Android."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent / "reference-omarchy-android"
+sys.path.insert(0, str(ROOT))
+
+from fajr_sleep_guard.config import CONFIG_PATH, SCHEDULE_PATH, load_config  # noqa: E402
+from fajr_sleep_guard.scheduler import generate_schedule  # noqa: E402
+from fajr_sleep_guard.zepp_sync import ensure_adb_target, seed_history_from_file, sync_zepp_sleep  # noqa: E402
+
+
+def push_to_android(target: str, pkg: str) -> bool:
+    remote_dir = f"/sdcard/Android/data/{pkg}/files"
+    subprocess.run(["adb", "-s", target, "shell", f"mkdir -p {remote_dir}"], check=False, capture_output=True)
+    r1 = subprocess.run(["adb", "-s", target, "push", str(SCHEDULE_PATH), f"{remote_dir}/schedule.json"],
+                        capture_output=True, text=True)
+    r2 = subprocess.run(["adb", "-s", target, "push", str(CONFIG_PATH), f"{remote_dir}/config.json"],
+                        capture_output=True, text=True)
+    subprocess.run(
+        ["adb", "-s", target, "shell", "am", "broadcast", "-a", f"{pkg}.ACTION_SYNC_SCHEDULE", "-n",
+         f"{pkg}/.ScheduleSyncReceiver"],
+        capture_output=True,
+        text=True,
+    )
+    return r1.returncode == 0 and r2.returncode == 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Sync Zepp Life sleep data and update Fajr sleep schedule.")
+    ap.add_argument("--seed", type=Path, help="Optional JSON file of historical sleep records to seed.")
+    ap.add_argument("--no-zepp", action="store_true", help="Skip live Zepp Life UI sync.")
+    ap.add_argument("--no-push", action="store_true", help="Skip pushing schedule.json to Android.")
+    ap.add_argument("--timeout", type=int, default=20, help="ADB Wi-Fi ensure timeout in seconds.")
+    args = ap.parse_args()
+
+    cfg = load_config()
+    if args.seed and args.seed.exists():
+        n = seed_history_from_file(args.seed)
+        print(f"Seeded sleep history: {n} total days.")
+
+    target = None
+    if not args.no_zepp or not args.no_push:
+        target = ensure_adb_target(cfg.get("adb_serial", "any"), timeout=args.timeout)
+
+    if not args.no_zepp:
+        if target:
+            try:
+                recs = sync_zepp_sleep(target)
+                print(f"Zepp Life synced ({len(recs)} total days in history).")
+            except Exception as exc:
+                print(f"Warning: Zepp Life sync skipped ({exc})", file=sys.stderr)
+        else:
+            print("Warning: No ADB device reachable; computing schedule from existing history.", file=sys.stderr)
+
+    sched = generate_schedule(cfg)
+    t = sched["tonight"]
+    print(
+        f"Tonight ({t['night_of']}): Isha={t['isha'][11:16]} | "
+        f"Lock={t['bedtime'][11:16]} (1h before sleep {t['desired_sleep_at'][11:16]}, ideal lock={t['ideal_bedtime'][11:16]}) | "
+        f"Wake={t['wake_at'][11:16]} (Fajr={t['fajr'][11:16]}) | "
+        f"Expected sleep={t['expected_sleep_min']}m | Converge={sched['days_to_converge_est']}d"
+    )
+
+    if not args.no_push and target:
+        if push_to_android(target, cfg.get("android_package", "com.mhawar.fajrsleepguard")):
+            print(f"Pushed schedule.json & config.json to {target}.")
+        else:
+            print(f"Warning: Failed pushing schedule to {target}.", file=sys.stderr)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

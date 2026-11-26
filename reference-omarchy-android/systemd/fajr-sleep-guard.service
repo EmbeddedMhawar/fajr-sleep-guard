@@ -1,0 +1,13 @@
+[Unit]
+Description=Fajr Sleep Guard PC Lock Daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/fajr-sleep-guard
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

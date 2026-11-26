@@ -1,0 +1,15 @@
+{
+  "builtin": "schedule",
+  "restart_policy": "always",
+  "args": [
+    "CRON_TZ=Africa/Casablanca 30 10 * * *",
+    "fajr-sleep-sync"
+  ],
+  "description": "Every day at 10:30 AM (Africa/Casablanca), syncs Zepp Life sleep data over ADB, recalculates tonight's adaptive Isha-to-Fajr bedtime and Fajr - 10m wake time, and pushes the schedule to the Android companion app.",
+  "display_name": "Daily Fajr Sleep Sync",
+  "agent_permissions": {
+    "access_grants": [
+      "command(fajr-sleep-sync)"
+    ]
+  }
+}
