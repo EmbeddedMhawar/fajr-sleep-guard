@@ -33,8 +33,7 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTop"
-            android:showOnLockScreen="true"
-            android:turnScreenOn="true" />
+            android:showOnLockScreen="true" />
 
         <activity
             android:name=".FajrAlarmActivity"

@@ -235,7 +235,8 @@ def sync_zepp_sleep(target: str, max_days: int = 14, overlap_days: int = 2) -> l
         last_raw = raw
 
         already_has_valid = d in by_date and (by_date[d].get("sleep_duration_min") or 0) > 0
-        by_date[d] = rec
+        if not (d in by_date and by_date[d].get("manual_override")):
+            by_date[d] = rec
 
         if already_has_valid:
             seen_known += 1

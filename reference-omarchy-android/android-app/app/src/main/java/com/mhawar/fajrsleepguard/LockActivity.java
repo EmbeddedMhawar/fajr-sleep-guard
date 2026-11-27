@@ -1,11 +1,13 @@
 package com.mhawar.fajrsleepguard;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -58,13 +60,19 @@ public class LockActivity extends Activity {
                     emergencyBtn.setEnabled(false);
                     emergencyBtn.setText("");
                     emergencyBtn.setVisibility(View.INVISIBLE);
-                    LockController.turnScreenOffNow(LockActivity.this);
+                    if (LockController.turnScreenOffNow(LockActivity.this)) {
+                        finish();
+                        return;
+                    }
                 } else {
                     emergencyBtn.setVisibility(View.VISIBLE);
                     emergencyBtn.setEnabled(true);
                     emergencyBtn.setText("Hold for Emergency");
                     if (now - lastInteractionMs > 4000L) {
-                        LockController.turnScreenOffNow(LockActivity.this);
+                        if (LockController.turnScreenOffNow(LockActivity.this)) {
+                            finish();
+                            return;
+                        }
                     }
                 }
             }
@@ -76,7 +84,6 @@ public class LockActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setShowWhenLocked(true);
-        setTurnScreenOn(true);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -176,12 +183,14 @@ public class LockActivity extends Activity {
         holding = false;
         handler.removeCallbacks(tickRunnable);
         super.onPause();
-        if (LockController.shouldEnforceLock(this)) {
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (pm != null && pm.isInteractive() && LockController.shouldEnforceLock(this)) {
             handler.postDelayed(() -> {
-                if (LockController.shouldEnforceLock(LockActivity.this)) {
+                PowerManager pm2 = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm2 != null && pm2.isInteractive() && LockController.shouldEnforceLock(LockActivity.this)) {
                     LockController.showLockScreen(LockActivity.this);
                 }
-            }, 200L);
+            }, 250L);
         }
     }
 
