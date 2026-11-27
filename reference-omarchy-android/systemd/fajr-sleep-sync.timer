@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Fajr Sleep Guard Zepp Life Sync daily at 10:30 AM
+
+[Timer]
+OnCalendar=*-*-* 10:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

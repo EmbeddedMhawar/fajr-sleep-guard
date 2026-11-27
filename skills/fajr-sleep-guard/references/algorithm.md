@@ -15,7 +15,7 @@
   "pre_sleep_lock_min": 60,
   "max_target_sleep_min": 510,
   "min_target_sleep_min": 360,
-  "max_daily_shift_min": 20,
+  "max_daily_shift_min": 30,
   "emergency": {
     "ratio": 1.0,
     "min_hold_sec": 3,
@@ -41,23 +41,17 @@ Every parameter above is editable anytime in `config.json`.
 
 Given tonight's `isha_dt` and tomorrow morning's `fajr_dt`:
 
-1. **Target Wake Time:**
-   `wake_dt = fajr_dt - timedelta(minutes=wake_offset_before_fajr_min)`
-2. **Ideal Bedtime (Maximize Isha-to-Fajr Sleep):**
-   - Earliest realistic bedtime: `earliest_bed = isha_dt + timedelta(minutes=isha_wind_down_min)`
-   - Desired ceiling bedtime: `ceiling_bed = wake_dt - timedelta(minutes=max_target_sleep_min)`
-   - `ideal_bed = max(earliest_bed, ceiling_bed)`
-   *(In winter, `ceiling_bed` is later than `earliest_bed`, giving up to `max_target_sleep_min` e.g. 8h30m before `Fajr - 10m`. In summer, `earliest_bed` is later, so you sleep right after Isha to capture every available minute before Fajr.)*
-3. **Adaptive Gradual Shift (from Zepp / Sleep Data):**
-   - Take the last `7` nights with valid `sleep_duration_min > 0` from `sleep_history.json`.
-   - Convert each night's `bedtime` to minutes relative to midnight (e.g., `23:30` = `-30`, `01:30` = `+90`) and compute the **median** (`recent_median_bed`).
-   - Also compute the **weighted baseline** if the user slept slightly earlier yesterday (`yesterday_bed`).
-   - Anchor `current_anchor = min(recent_median_bed, yesterday_bed)` when improving, or `recent_median_bed` if erratic, clamped so we never shift *later* than `recent_median_bed` and never shift *earlier* faster than `max_daily_shift_min` (`20 min/night`) from yesterday's target/actual:
-     - If `current_anchor <= ideal_bed`: `desired_sleep = ideal_bed` (already converged!).
-     - Else: `desired_sleep = max(ideal_bed, current_anchor - max_daily_shift_min)`.
-4. **1-Hour Pre-Sleep Lock Time (`bedtime` / `lock_at`):**
-   - `lock_at = max(earliest_bed, desired_sleep - timedelta(minutes=pre_sleep_lock_min))` (locks screens **1 hour before desired sleep time**, never earlier than `Isha + 30 min`).
-5. **Output (`schedule.json`):**
+1. **Ideal Target Wake Time:**
+   `ideal_wake = fajr_dt - timedelta(minutes=wake_offset_before_fajr_min)`
+2. **Adaptive Gradual Wake Shift (from Zepp / Sleep Data):**
+   - Take the last `7` normal nights (`sleep_duration_min >= 240`) from `sleep_history.json` and anchor `wake_anchor` to yesterday's wake time (falling back to the 7-day median if yesterday was a `>2h` outlier).
+   - If `wake_anchor <= ideal_wake`: `wake_dt = ideal_wake`.
+   - Else: `wake_dt = max(ideal_wake, wake_anchor - timedelta(minutes=max_daily_shift_min))` (`-30 min/day`).
+3. **Desired Sleep & 1-Hour Pre-Sleep Lock (Maximize Isha-to-Fajr Sleep):**
+   - `earliest_after_isha = isha_dt + timedelta(minutes=isha_wind_down_min)`
+   - `desired_sleep = max(earliest_after_isha, wake_dt - timedelta(minutes=max_target_sleep_min))`
+   - `lock_at = max(earliest_after_isha, desired_sleep - timedelta(minutes=pre_sleep_lock_min))` (locks screens **1 hour before desired sleep time**, never earlier than `Isha + 30 min`).
+4. **Output (`schedule.json`):**
    ```json
    {
      "generated_at": "2026-11-26T13:10:00+01:00",

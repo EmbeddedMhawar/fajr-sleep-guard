@@ -1,0 +1,7 @@
+[Unit]
+Description=Fajr Sleep Guard Daily Zepp Life Sync
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/fajr-sleep-sync

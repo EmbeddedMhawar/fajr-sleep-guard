@@ -26,7 +26,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "pre_sleep_lock_min": 60,     # lock screens 1 hour before desired sleep time
     "max_target_sleep_min": 510,  # 8h 30m ceiling when night is long
     "min_target_sleep_min": 360,  # 6h floor
-    "max_daily_shift_min": 20,    # gradual step earlier per night
+    "max_daily_shift_min": 30,    # gradual step earlier per day (wake & bedtime)
     "adb_serial": "any",
     "android_package": "com.mhawar.fajrsleepguard",
     "emergency": {

@@ -31,7 +31,9 @@ def main() -> int:
 
     print(f"Now:            {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
     print(f"Location:       {sched.get('city')}, {sched.get('country')}")
-    print(f"History days:   {len(hist)} (anchor bedtime offset: {sched.get('recent_anchor_bedtime_rel_min')} min from midnight)")
+    wake_min = sched.get("recent_wake_anchor_min")
+    wake_str = f"{wake_min // 60:02d}:{wake_min % 60:02d}" if isinstance(wake_min, int) else "n/a"
+    print(f"History days:   {len(hist)} (recent wake anchor: {wake_str})")
     print(f"Active window:  {a['night_of']} -> lock {a['bedtime'][11:16]} (sleep {a.get('desired_sleep_at', a['bedtime'])[11:16]}) .. wake {a['wake_at'][11:16]} (Fajr {a['fajr'][11:16]})")
     print(f"Tonight window: {t['night_of']} -> Isha {t['isha'][11:16]} | Lock {t['bedtime'][11:16]} (sleep {t.get('desired_sleep_at', t['bedtime'])[11:16]}, ideal lock {t['ideal_bedtime'][11:16]}) | Wake {t['wake_at'][11:16]}")
     print(f"Expected sleep: {t['expected_sleep_min']//60}h {t['expected_sleep_min']%60:02d}m | Days to ideal: {sched.get('days_to_converge_est')}")
