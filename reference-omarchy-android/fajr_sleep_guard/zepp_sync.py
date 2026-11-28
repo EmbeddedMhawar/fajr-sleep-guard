@@ -196,18 +196,23 @@ def sync_zepp_sleep(target: str, max_days: int = 14, overlap_days: int = 2) -> l
     if "showing=true" in kg:
         raise RuntimeError("Phone keyguard is locked; cannot navigate Zepp Life UI until unlocked.")
 
-    _adb_shell(target, "input keyevent 224 && monkey -p com.xiaomi.hm.health -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1")
-    time.sleep(3.0)
+    _adb_shell(target, "input keyevent 224 && wm dismiss-keyguard && monkey -p com.xiaomi.hm.health -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1")
+    time.sleep(3.5)
 
     xml = ""
     for attempt in range(6):
         xml = _dump_ui(target)
         if "sleepSwitchDateTime" in xml:
             break
-        sleep_pt = _find_node_center(xml, text="Sleep")
+        # Prefer tapping the Sleep card body (sleep_duration / sleep_score) over the small header text
+        sleep_pt = (
+            _find_node_center(xml, resource_id="sleep_duration")
+            or _find_node_center(xml, resource_id="sleep_score")
+            or _find_node_center(xml, text="Sleep")
+        )
         if sleep_pt:
-            _adb_shell(target, f"input tap {sleep_pt[0]} {sleep_pt[1]}")
-            time.sleep(2.5)
+            _adb_shell(target, f"input keyevent 224 && input tap {sleep_pt[0]} {sleep_pt[1]}")
+            time.sleep(3.0)
             xml = _dump_ui(target)
             if "sleepSwitchDateTime" in xml:
                 break
